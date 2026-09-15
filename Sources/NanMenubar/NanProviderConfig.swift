@@ -1,23 +1,24 @@
 import Foundation
 
-/// Resolves the NaN inference API key used for listing models.
-/// Priority: NAN_API_KEY env var -> ~/.config/nan/api-key (community standard)
+/// Resolves the NaN API key.
+/// Priority: NAN_API_KEY -> configurable file (default ~/.config/nan/api-key)
 /// -> opencode config -> opencode auth store.
 enum NanProviderConfig {
-    static func apiKey() -> String? {
+    static let defaultKeyPath = "~/.config/nan/api-key"
+
+    static func apiKey(keyPath: String = defaultKeyPath) -> String? {
         if let env = ProcessInfo.processInfo.environment["NAN_API_KEY"], !env.isEmpty {
             return env
         }
-        if let key = fromCommunityFile() { return key }
+        if let key = fromFile(keyPath) { return key }
         if let key = fromOpencodeConfig() { return key }
         if let key = fromOpencodeAuth() { return key }
         return nil
     }
 
-    private static func fromCommunityFile() -> String? {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let url = home.appendingPathComponent(".config/nan/api-key")
-        guard let raw = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+    private static func fromFile(_ path: String) -> String? {
+        let expanded = (path as NSString).expandingTildeInPath
+        guard let raw = try? String(contentsOfFile: expanded, encoding: .utf8) else { return nil }
         let key = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return key.isEmpty ? nil : key
     }
@@ -53,7 +54,7 @@ enum NanProviderConfig {
         let range = NSRange(text.startIndex..., in: text)
         guard let match = regex.firstMatch(in: text, range: range),
               match.numberOfRanges > 1,
-              let r = Range(match.range(at: 1), in: text) else { return nil }
-        return String(text[r])
+              let resultRange = Range(match.range(at: 1), in: text) else { return nil }
+        return String(text[resultRange])
     }
 }

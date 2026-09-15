@@ -1,19 +1,20 @@
 import Foundation
 
-/// Talks to the two NaN origins that matter. Both accept the same API key:
-/// - https://cloud-api.nan.builders  (account + consumption, Bearer <api-key>)
-/// - https://api.nan.builders/v1     (inference surface: available models)
+/// Talks to the two NaN origins. Both accept the same API key:
+/// - https://cloud-api.nan.builders  (account and usage, Bearer <api-key>)
+/// - https://api.nan.builders/v1     (inference surface: models)
 struct NanClient {
     private static let dashboard = "https://cloud-api.nan.builders"
-    static let modelsURL = URL(string: "https://api.nan.builders/v1/models")!
 
+    // The delegate blocks redirects so the Bearer never travels to another host.
+    private static let redirectGuard = RedirectGuard()
     private let session: URLSession
 
     init() {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 15
         config.httpAdditionalHeaders = ["Accept": "application/json"]
-        self.session = URLSession(configuration: config)
+        self.session = URLSession(configuration: config, delegate: Self.redirectGuard, delegateQueue: nil)
     }
 
     func account(apiKey: String) async throws -> Account {
@@ -32,12 +33,9 @@ struct NanClient {
     }
 
     func availableModels(apiKey: String) async throws -> [String] {
-        let data = try await get(Self.modelsURL.absoluteString, apiKey: apiKey)
-        do {
-            return try JSONDecoder().decode(ModelsResponse.self, from: data).data.map(\.id)
-        } catch {
-            throw NanError.decoding(String(describing: error))
-        }
+        let data = try await get("https://api.nan.builders/v1/models", apiKey: apiKey)
+        let response: ModelsResponse = try decode(data)
+        return response.data.map(\.id)
     }
 
     private func get(_ url: String, apiKey: String) async throws -> Data {
@@ -45,11 +43,9 @@ struct NanClient {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw NanError.transport("sin respuesta") }
+        guard let http = response as? HTTPURLResponse else { throw NanError.transport }
         if http.statusCode == 401 || http.statusCode == 403 { throw NanError.unauthorized }
-        guard (200..<300).contains(http.statusCode) else {
-            throw NanError.transport("HTTP \(http.statusCode)")
-        }
+        guard (200..<300).contains(http.statusCode) else { throw NanError.transport }
         return data
     }
 
@@ -57,7 +53,19 @@ struct NanClient {
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            throw NanError.decoding(String(describing: error))
+            throw NanError.decoding
         }
+    }
+}
+
+private final class RedirectGuard: NSObject, URLSessionTaskDelegate {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
     }
 }

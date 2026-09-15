@@ -4,7 +4,7 @@ import AppKit
 // MARK: - Theme
 
 struct DashboardTheme {
-    let kind: AppTheme
+    let isWeb: Bool
     let width: CGFloat
     let radius: CGFloat
     let background: AnyShapeStyle?
@@ -22,49 +22,47 @@ struct DashboardTheme {
     let secondary: Color
     let tertiary: Color
 
-    static func make(_ kind: AppTheme) -> DashboardTheme {
-        switch kind {
+    static func make(_ theme: AppTheme) -> DashboardTheme {
+        switch theme {
         case .native:
             return DashboardTheme(
-                kind: .native,
-                width: 360,
-                radius: 10,
+                isWeb: false, width: 360, radius: 10,
                 background: nil,
-                card: AnyShapeStyle(.quaternary),
-                border: nil,
-                accent: Color.accentColor,
-                scheme: nil,
-                titleFont: .headline,
-                subtitleFont: .caption,
-                sectionFont: .subheadline.weight(.semibold),
-                valueFont: .title2.weight(.semibold),
-                numberFont: .caption,
-                tinyFont: .caption2,
-                primary: .primary,
-                secondary: .secondary,
-                tertiary: Color(nsColor: .tertiaryLabelColor)
+                card: AnyShapeStyle(.quaternary), border: nil,
+                accent: .accentColor, scheme: nil,
+                titleFont: .headline, subtitleFont: .caption,
+                sectionFont: .subheadline.weight(.semibold), valueFont: .title2.weight(.semibold),
+                numberFont: .caption, tinyFont: .caption2,
+                primary: .primary, secondary: .secondary, tertiary: Color(nsColor: .tertiaryLabelColor)
             )
         case .web:
             return DashboardTheme(
-                kind: .web,
-                width: 392,
-                radius: 10,
+                isWeb: true, width: 392, radius: 10,
                 background: AnyShapeStyle(Color(red: 0.035, green: 0.035, blue: 0.05)),
                 card: AnyShapeStyle(Color(red: 0.085, green: 0.085, blue: 0.115)),
                 border: Color.white.opacity(0.06),
-                accent: Color(red: 0.55, green: 0.40, blue: 0.98),
-                scheme: .dark,
+                accent: Color(red: 0.55, green: 0.40, blue: 0.98), scheme: .dark,
                 titleFont: .system(size: 16, weight: .bold, design: .monospaced),
                 subtitleFont: .system(size: 9, weight: .medium, design: .monospaced),
                 sectionFont: .system(size: 10, weight: .semibold, design: .monospaced),
                 valueFont: .system(size: 20, weight: .bold, design: .monospaced),
                 numberFont: .system(size: 11, design: .monospaced),
                 tinyFont: .system(size: 9, design: .monospaced),
-                primary: .white,
-                secondary: Color(white: 0.55),
-                tertiary: Color(white: 0.45)
+                primary: .white, secondary: Color(white: 0.55), tertiary: Color(white: 0.45)
             )
         }
+    }
+}
+
+private extension View {
+    /// Card background and border from the theme, to avoid repeating the modifier.
+    func card(_ theme: DashboardTheme) -> some View {
+        background(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).fill(theme.card))
+            .overlay {
+                if let border = theme.border {
+                    RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(border)
+                }
+            }
     }
 }
 
@@ -73,6 +71,7 @@ struct DashboardTheme {
 struct DashboardView: View {
     @EnvironmentObject private var model: AppModel
     @State private var keyInput = ""
+    @State private var hasStoredKey = false
     @State private var showSettings = false
 
     private var theme: DashboardTheme { DashboardTheme.make(model.theme) }
@@ -80,19 +79,17 @@ struct DashboardView: View {
     var body: some View {
         Group {
             if showSettings {
-                SettingsPane(theme: theme, keyInput: $keyInput, onBack: { showSettings = false })
+                SettingsPane(theme: theme, keyInput: $keyInput, hasStoredKey: $hasStoredKey, onBack: { showSettings = false })
             } else {
-                dashboard
+                dashboard.padding(14)
             }
         }
-        .padding(14)
         .frame(width: theme.width, height: showSettings || model.isAuthorized ? 620 : 320)
         .background {
-            if let bg = theme.background {
-                Rectangle().fill(bg)
+            if !showSettings, let background = theme.background {
+                Rectangle().fill(background)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .preferredColorScheme(theme.scheme)
     }
 
@@ -100,7 +97,9 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             header
             if model.isAuthorized {
-                stats
+                if model.showMetrics, model.snapshot != nil {
+                    stats
+                }
                 modelsSection
             } else {
                 keyPrompt
@@ -120,9 +119,9 @@ struct DashboardView: View {
                 Text("NaN")
                     .font(theme.titleFont)
                     .foregroundStyle(theme.primary)
-                Text(model.accountLabel.isEmpty ? (theme.kind == .web ? "USAGE DASHBOARD" : "Uso de la cuenta") : model.accountLabel)
+                Text(model.accountLabel.isEmpty ? (theme.isWeb ? "USAGE DASHBOARD" : "Account usage") : model.accountLabel)
                     .font(theme.subtitleFont)
-                    .tracking(theme.kind == .web ? 1.2 : 0)
+                    .tracking(theme.isWeb ? 1.2 : 0)
                     .foregroundStyle(theme.secondary)
                     .lineLimit(1)
             }
@@ -145,20 +144,20 @@ struct DashboardView: View {
     private var stats: some View {
         HStack(spacing: 8) {
             StatCard(theme: theme, label: "Total", value: model.allTimeTotal)
-            StatCard(theme: theme, label: theme.kind == .web ? "30 DÍAS" : "30 días", value: model.last30dTotal)
-            StatCard(theme: theme, label: theme.kind == .web ? "24 HORAS" : "24 horas", value: model.last24hTotal)
+            StatCard(theme: theme, label: theme.isWeb ? "30 DÍAS" : "30 days", value: model.last30dTotal)
+            StatCard(theme: theme, label: theme.isWeb ? "24 HORAS" : "24 hours", value: model.last24hTotal)
         }
     }
 
     private var modelsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(theme.kind == .web ? "MODELOS" : "Modelos")
+                Text(theme.isWeb ? "MODELS" : "Models")
                     .font(theme.sectionFont)
-                    .tracking(theme.kind == .web ? 1.2 : 0)
-                    .foregroundStyle(theme.kind == .web ? theme.secondary : theme.primary)
+                    .tracking(theme.isWeb ? 1.2 : 0)
+                    .foregroundStyle(theme.isWeb ? theme.secondary : theme.primary)
                 Spacer()
-                Text("Actualizado \(Format.relative(model.lastUpdated))")
+                Text("Updated \(Format.relative(model.lastUpdated))")
                     .font(theme.tinyFont)
                     .foregroundStyle(theme.tertiary)
             }
@@ -169,8 +168,8 @@ struct DashboardView: View {
                     .foregroundStyle(.orange)
             }
 
-            if model.models.isEmpty {
-                Text(model.isRefreshing ? "Cargando…" : "Sin datos de consumo todavía.")
+            if model.visibleModels.isEmpty {
+                Text(model.isRefreshing ? "Loading…" : "No usage data yet.")
                     .font(theme.numberFont)
                     .foregroundStyle(theme.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -178,8 +177,8 @@ struct DashboardView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 8) {
-                        ForEach(model.models) { item in
-                            ModelRowView(theme: theme, model: item)
+                        ForEach(model.visibleModels) { item in
+                            ModelRowView(theme: theme, model: item, showBreakdown: model.showMetrics)
                         }
                     }
                     .padding(.vertical, 1)
@@ -191,30 +190,28 @@ struct DashboardView: View {
 
     private var keyPrompt: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Conecta tu API key de NaN")
+            Text("Connect your NaN API key")
                 .font(theme.sectionFont)
                 .foregroundStyle(theme.primary)
-            Text("Se detecta sola si tienes un fichero en ~/.config/nan/api-key o configuras NaN en opencode. Si no, pégala aquí.")
+            Text("Auto-detected from ~/.config/nan/api-key or from opencode. Otherwise paste it here.")
                 .font(theme.tinyFont)
                 .foregroundStyle(theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            TextField("sk-…", text: $keyInput)
+            SecureField("sk-…", text: $keyInput)
                 .textFieldStyle(.roundedBorder)
-                .font(theme.kind == .web ? .system(size: 11, design: .monospaced) : .body)
             if let error = model.errorMessage {
                 Text(error)
                     .font(theme.tinyFont)
                     .foregroundStyle(.orange)
             }
-            Button("Guardar") { model.setAPIKey(keyInput) }
-                .buttonStyle(theme.kind == .web ? .borderedProminent : .borderedProminent)
+            Button("Save") { model.setAPIKey(keyInput) }
+                .buttonStyle(.borderedProminent)
                 .tint(theme.accent)
                 .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).fill(theme.card))
-        .overlay(borderOverlay)
+        .card(theme)
     }
 
     private var footer: some View {
@@ -222,11 +219,7 @@ struct DashboardView: View {
             Button {
                 showSettings = true
             } label: {
-                if theme.kind == .web {
-                    Text("Ajustes")
-                } else {
-                    Label("Ajustes", systemImage: "gearshape")
-                }
+                if theme.isWeb { Text("Settings") } else { Label("Settings", systemImage: "gearshape") }
             }
             .buttonStyle(.borderless)
             .font(theme.tinyFont)
@@ -234,17 +227,10 @@ struct DashboardView: View {
 
             Spacer()
 
-            Button("Salir") { NSApp.terminate(nil) }
+            Button("Quit") { NSApp.terminate(nil) }
                 .buttonStyle(.borderless)
                 .font(theme.tinyFont)
                 .foregroundStyle(theme.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private var borderOverlay: some View {
-        if let border = theme.border {
-            RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(border)
         }
     }
 }
@@ -257,10 +243,10 @@ private struct StatCard: View {
     let value: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: theme.kind == .web ? 4 : 3) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(label)
                 .font(theme.tinyFont)
-                .tracking(theme.kind == .web ? 1 : 0)
+                .tracking(theme.isWeb ? 1 : 0)
                 .foregroundStyle(theme.secondary)
             Text(Format.compact(value))
                 .font(theme.valueFont)
@@ -273,29 +259,25 @@ private struct StatCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).fill(theme.card))
-        .overlay {
-            if let border = theme.border {
-                RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(border)
-            }
-        }
+        .card(theme)
     }
 }
 
 private struct ModelRowView: View {
     let theme: DashboardTheme
     let model: DashboardModel
+    let showBreakdown: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(model.name)
-                    .font(theme.kind == .web ? .system(size: 12, weight: .semibold, design: .monospaced) : .subheadline.weight(.semibold))
+                    .font(theme.isWeb ? .system(size: 12, weight: .semibold, design: .monospaced) : .subheadline.weight(.semibold))
                     .foregroundStyle(theme.primary)
                     .lineLimit(1)
                 if !model.available {
-                    Text("n/d")
-                        .font(theme.kind == .web ? .system(size: 8, design: .monospaced) : .caption2)
+                    Text("n/a")
+                        .font(theme.isWeb ? .system(size: 8, design: .monospaced) : .caption2)
                         .foregroundStyle(theme.secondary)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
@@ -303,7 +285,7 @@ private struct ModelRowView: View {
                 }
                 Spacer()
                 if let cap = model.cap {
-                    Text(Format.compact(model.monthUsed)).foregroundStyle(theme.kind == .web ? theme.accent : theme.primary).monospacedDigit()
+                    Text(Format.compact(model.monthUsed)).foregroundStyle(theme.isWeb ? theme.accent : theme.primary).monospacedDigit()
                     + Text(" / \(Format.compact(cap))").foregroundStyle(theme.secondary).monospacedDigit()
                 } else {
                     Text("\(Format.compact(model.allTime)) total").foregroundStyle(theme.secondary).monospacedDigit()
@@ -324,24 +306,21 @@ private struct ModelRowView: View {
                     .tint(theme.accent)
             }
 
-            HStack {
-                Text("in \(Format.compact(model.input)) · out \(Format.compact(model.output))")
-                    .monospacedDigit()
-                Spacer()
-                if let reset = Format.resetLabel(model.resets) {
-                    Text(reset)
+            if showBreakdown {
+                HStack {
+                    Text("in \(Format.compact(model.input)) · out \(Format.compact(model.output))")
+                        .monospacedDigit()
+                    Spacer()
+                    if let reset = Format.resetLabel(model.resets) {
+                        Text(reset)
+                    }
                 }
+                .font(theme.tinyFont)
+                .foregroundStyle(theme.tertiary)
             }
-            .font(theme.tinyFont)
-            .foregroundStyle(theme.tertiary)
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).fill(theme.card))
-        .overlay {
-            if let border = theme.border {
-                RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(border)
-            }
-        }
+        .card(theme)
     }
 }
 
@@ -351,91 +330,113 @@ private struct SettingsPane: View {
     @EnvironmentObject private var model: AppModel
     let theme: DashboardTheme
     @Binding var keyInput: String
+    @Binding var hasStoredKey: Bool
     let onBack: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(spacing: 0) {
             HStack {
-                Text("Ajustes")
-                    .font(theme.titleFont)
-                    .foregroundStyle(theme.primary)
+                Button(action: onBack) {
+                    Label("Back", systemImage: "chevron.left")
+                }
+                .buttonStyle(.borderless)
                 Spacer()
-                Button("Volver", action: onBack)
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(theme.secondary)
+                Text("Settings")
+                    .font(.headline)
+                Spacer()
+                Label("Back", systemImage: "chevron.left").hidden()
             }
-
-            section("API key de NaN") {
-                TextField("sk-…", text: $keyInput)
-                    .textFieldStyle(.roundedBorder)
-                    .font(theme.kind == .web ? .system(size: 11, design: .monospaced) : .body)
-                Text("Se detecta sola desde ~/.config/nan/api-key o desde la configuración de NaN en opencode.")
-                    .font(theme.tinyFont)
-                    .foregroundStyle(theme.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                HStack {
-                    Button("Guardar") { model.setAPIKey(keyInput) }
-                        .buttonStyle(.borderedProminent)
-                        .tint(theme.accent)
-                        .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
-                    Button("Borrar guardada") {
-                        SecretStore.clearAPIKey()
-                        keyInput = ""
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .controlSize(.small)
-            }
-
-            section("Aspecto") {
-                Picker("", selection: $model.theme) {
-                    ForEach(AppTheme.allCases) { item in
-                        Text(item.label).tag(item)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-            }
-
-            section("Barra de menús") {
-                Picker("", selection: $model.menuBarStyle) {
-                    ForEach(MenuBarStyle.allCases) { style in
-                        Text(style.label).tag(style)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
 
             Divider()
 
-            HStack {
-                Text(model.accountLabel.isEmpty ? "Sin sesión" : model.accountLabel)
-                    .font(theme.tinyFont)
-                    .foregroundStyle(theme.secondary)
-                    .lineLimit(1)
-                Spacer()
-                Button("Salir") { NSApp.terminate(nil) }
-                    .buttonStyle(.borderless)
-                    .font(theme.tinyFont)
-                    .foregroundStyle(theme.secondary)
+            Form {
+                Section("NaN API key") {
+                    SecureField("API key", text: $keyInput)
+                    TextField("Key file", text: $model.keyPath)
+                    HStack(spacing: 8) {
+                        Button("Save") {
+                            model.setAPIKey(keyInput)
+                            if NanAPIKey.normalized(keyInput) != nil {
+                                keyInput = ""
+                                hasStoredKey = true
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+
+                        if hasStoredKey {
+                            Button("Remove", role: .destructive) {
+                                model.clearAPIKey()
+                                keyInput = ""
+                                hasStoredKey = false
+                            }
+                        }
+                        Spacer()
+                        if hasStoredKey {
+                            Label("Stored in Keychain", systemImage: "checkmark.seal.fill")
+                                .labelStyle(.titleAndIcon)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section("Appearance") {
+                    Picker("Theme", selection: $model.theme) {
+                        ForEach(AppTheme.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section("Menu bar") {
+                    Picker("Indicator follows", selection: $model.panelModel) {
+                        ForEach(PanelModel.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if model.panelModel == .fixed {
+                        TextField("Model id", text: $model.panelModelId)
+                    }
+
+                    Text("Near cap: closest to its cap · Highest: most tokens · Fixed: the model id above.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Picker("Gauge", selection: $model.panelGauge) {
+                        ForEach(PanelGauge.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Toggle("Show icon", isOn: $model.showIcon)
+                    Toggle("Show percentage", isOn: $model.showPercentage)
+                    Toggle("Show reset", isOn: $model.showReset)
+                    Toggle("Show model name", isOn: $model.showModelName)
+                    Toggle("Show total tokens", isOn: $model.showTotalTokens)
+                }
+
+                Section("Data") {
+                    Stepper(value: $model.pollSeconds, in: 60...1800, step: 60) {
+                        Text("Poll every \(model.pollSeconds) seconds")
+                    }
+                    Toggle("Aggregate usage (24h / 30d)", isOn: $model.showMetrics)
+                    Toggle("Hide unused models", isOn: $model.hideUnused)
+                }
+
+                Section {
+                    HStack {
+                        Text(model.accountLabel.isEmpty ? "Not signed in" : model.accountLabel)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer()
+                        Button("Quit") { NSApp.terminate(nil) }
+                    }
+                }
             }
-
-            Spacer()
+            .formStyle(.grouped)
         }
-        .onAppear {
-            if keyInput.isEmpty, let stored = SecretStore.loadAPIKey() { keyInput = stored }
-        }
-    }
-
-    @ViewBuilder
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(theme.kind == .web ? .system(size: 9, weight: .semibold, design: .monospaced) : .caption.weight(.semibold))
-                .tracking(theme.kind == .web ? 1 : 0)
-                .foregroundStyle(theme.secondary)
-            content()
-        }
+        .onAppear { hasStoredKey = SecretStore.loadAPIKey() != nil }
     }
 }

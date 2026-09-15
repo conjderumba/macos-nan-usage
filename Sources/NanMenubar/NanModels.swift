@@ -31,9 +31,6 @@ struct QuotaModel: Decodable, Hashable {
 struct QuotaSnapshot: Decodable {
     let periodStart: String
     let models: [QuotaModel]
-
-    var capped: [QuotaModel] { models.filter { $0.cap > 0 } }
-    var uncapped: [QuotaModel] { models.filter { $0.cap == 0 } }
 }
 
 struct ModelsResponse: Decodable {
@@ -53,14 +50,14 @@ struct Account: Decodable {
 
 enum NanError: LocalizedError {
     case unauthorized
-    case transport(String)
-    case decoding(String)
+    case transport
+    case decoding
 
     var errorDescription: String? {
         switch self {
-        case .unauthorized: return "Sesión caducada. Vuelve a iniciar sesión."
-        case .transport(let m): return "Red: \(m)"
-        case .decoding(let m): return "Respuesta inválida: \(m)"
+        case .unauthorized: return "Invalid or expired API key."
+        case .transport: return "Could not reach NaN."
+        case .decoding: return "Unexpected server response."
         }
     }
 }

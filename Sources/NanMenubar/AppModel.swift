@@ -1,33 +1,6 @@
 import Foundation
 import SwiftUI
-
-enum MenuBarStyle: String, CaseIterable, Identifiable {
-    case iconAndTotal
-    case iconOnly
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .iconAndTotal: return "Icono + total"
-        case .iconOnly: return "Solo icono"
-        }
-    }
-}
-
-enum AppTheme: String, CaseIterable, Identifiable {
-    case native
-    case web
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .native: return "Nativo de macOS"
-        case .web: return "Estilo web NaN"
-        }
-    }
-}
+import AppKit
 
 struct DashboardModel: Identifiable {
     let id: String
@@ -50,6 +23,7 @@ struct DashboardModel: Identifiable {
 
 @MainActor
 final class AppModel: ObservableObject {
+    // Account data
     @Published private(set) var snapshot: UsageSnapshot?
     @Published private(set) var quota: QuotaSnapshot?
     @Published private(set) var account: Account?
@@ -60,122 +34,203 @@ final class AppModel: ObservableObject {
     @Published private(set) var isAuthorized = false
     @Published var errorMessage: String?
 
-    @Published var menuBarStyle: MenuBarStyle = MenuBarStyle(
-        rawValue: UserDefaults.standard.string(forKey: AppModel.menuBarStyleKey) ?? ""
-    ) ?? .iconAndTotal {
-        didSet { UserDefaults.standard.set(menuBarStyle.rawValue, forKey: AppModel.menuBarStyleKey) }
+    // Settings
+    @Published var theme: AppTheme = Prefs.raw("theme", .native) {
+        didSet { Prefs.set("theme", theme.rawValue) }
     }
-
-    @Published var theme: AppTheme = AppTheme(
-        rawValue: UserDefaults.standard.string(forKey: AppModel.themeKey) ?? ""
-    ) ?? .native {
-        didSet { UserDefaults.standard.set(theme.rawValue, forKey: AppModel.themeKey) }
+    @Published var keyPath: String = Prefs.string("keyPath", NanProviderConfig.defaultKeyPath) {
+        didSet {
+            Prefs.set("keyPath", keyPath)
+            resolveKey()
+            Task { await refresh() }
+        }
     }
-
-    private static let menuBarStyleKey = "nan.menuBarStyle"
-    private static let themeKey = "nan.theme"
+    @Published var pollSeconds: Int = Prefs.int("pollSeconds", 300) {
+        didSet {
+            Prefs.set("pollSeconds", pollSeconds)
+            restartTimer()
+        }
+    }
+    @Published var panelModel: PanelModel = Prefs.raw("panelModel", .worst) {
+        didSet { Prefs.set("panelModel", panelModel.rawValue) }
+    }
+    @Published var panelModelId: String = Prefs.string("panelModelId", "deepseek-v4-flash") {
+        didSet { Prefs.set("panelModelId", panelModelId) }
+    }
+    @Published var panelGauge: PanelGauge = Prefs.raw("panelGauge", .ring) {
+        didSet { Prefs.set("panelGauge", panelGauge.rawValue) }
+    }
+    @Published var showIcon: Bool = Prefs.bool("showIcon", true) {
+        didSet { Prefs.set("showIcon", showIcon) }
+    }
+    @Published var showPercentage: Bool = Prefs.bool("showPercentage", true) {
+        didSet { Prefs.set("showPercentage", showPercentage) }
+    }
+    @Published var showReset: Bool = Prefs.bool("showReset", true) {
+        didSet { Prefs.set("showReset", showReset) }
+    }
+    @Published var showModelName: Bool = Prefs.bool("showModel", false) {
+        didSet { Prefs.set("showModel", showModelName) }
+    }
+    @Published var showTotalTokens: Bool = Prefs.bool("showTotalTokens", false) {
+        didSet { Prefs.set("showTotalTokens", showTotalTokens) }
+    }
+    @Published var showMetrics: Bool = Prefs.bool("showMetrics", true) {
+        didSet {
+            Prefs.set("showMetrics", showMetrics)
+            Task { await refresh() }
+        }
+    }
+    @Published var hideUnused: Bool = Prefs.bool("hideUnused", true) {
+        didSet { Prefs.set("hideUnused", hideUnused) }
+    }
 
     private let client = NanClient()
-    private var apiKey: String
+    private var apiKey = ""
     private var timer: Timer?
 
     init() {
-        let key = SecretStore.loadAPIKey() ?? NanProviderConfig.apiKey() ?? ""
-        self.apiKey = key
-        self.isAuthorized = !key.isEmpty
+        resolveKey()
     }
+
+    // MARK: Derived
 
     var allTimeTotal: Int { snapshot?.allTime.totalTokens ?? 0 }
     var last30dTotal: Int { snapshot?.last30d.totalTokens ?? 0 }
     var last24hTotal: Int { snapshot?.last24h.totalTokens ?? 0 }
 
-    var menuTitle: String {
-        guard snapshot != nil else { return "NaN" }
-        return Format.compact(allTimeTotal)
+    var accountLabel: String { account?.email ?? account?.handle ?? "" }
+
+    var visibleModels: [DashboardModel] {
+        hideUnused ? models.filter { $0.monthUsed > 0 || $0.allTime > 0 } : models
     }
 
-    var accountLabel: String {
-        if let email = account?.email { return email }
-        if let handle = account?.handle { return "@\(handle)" }
-        return ""
+    /// Model reflected by the menu bar indicator.
+    var selectedModel: DashboardModel? {
+        let capped = models.filter { $0.cap != nil }
+        switch panelModel {
+        case .worst: return capped.max { $0.fraction < $1.fraction }
+        case .max: return capped.max { $0.monthUsed < $1.monthUsed }
+        case .fixed: return models.first { $0.id == panelModelId } ?? capped.first
+        }
     }
+
+    var gaugeImage: NSImage? {
+        guard let model = selectedModel else { return nil }
+        return GaugeRenderer.image(fraction: model.fraction, style: panelGauge)
+    }
+
+    var percentageText: String? {
+        guard let model = selectedModel, model.cap != nil else { return nil }
+        return "\(Int((model.fraction * 100).rounded()))%"
+    }
+
+    var resetText: String? {
+        guard let date = selectedModel?.resets else { return nil }
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
+        return days >= 1 ? "\(days)d" : "<1d"
+    }
+
+    var totalText: String { Format.compact(allTimeTotal) }
+
+    // MARK: Lifecycle
 
     func start() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.refresh() }
-        }
+        restartTimer()
         if isAuthorized { Task { await refresh() } }
     }
 
+    private func restartTimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(pollSeconds), repeats: true) { [weak self] _ in
+            Task { @MainActor in await self?.refresh() }
+        }
+    }
+
+    private func resolveKey() {
+        let key = NanAPIKey.normalized(SecretStore.loadAPIKey() ?? NanProviderConfig.apiKey(keyPath: keyPath) ?? "")
+        apiKey = key ?? ""
+        isAuthorized = key != nil
+    }
+
+    // MARK: Actions
+
     func setAPIKey(_ value: String) {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        apiKey = trimmed
-        SecretStore.saveAPIKey(trimmed)
+        guard let key = NanAPIKey.normalized(value) else {
+            errorMessage = "Invalid API key format."
+            return
+        }
+        SecretStore.saveAPIKey(key)
+        apiKey = key
         isAuthorized = true
         errorMessage = nil
         Task { await refresh() }
     }
 
+    func clearAPIKey() {
+        SecretStore.clearAPIKey()
+        apiKey = ""
+        isAuthorized = false
+        snapshot = nil
+        quota = nil
+        account = nil
+        models = []
+        availableModels = []
+        lastUpdated = nil
+        errorMessage = nil
+    }
+
     func refresh() async {
-        guard isAuthorized, !apiKey.isEmpty else { return }
-        guard !isRefreshing else { return }
+        guard isAuthorized, !apiKey.isEmpty, !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
 
+        let key = apiKey
         do {
-            async let accountTask = client.account(apiKey: apiKey)
-            async let metricsTask = client.metrics(apiKey: apiKey)
-            async let quotaTask = client.quota(apiKey: apiKey)
-            let (account, metrics, quotaSnapshot) = try await (accountTask, metricsTask, quotaTask)
+            async let accountTask = client.account(apiKey: key)
+            async let quotaTask = client.quota(apiKey: key)
+            let metrics = showMetrics ? try await client.metrics(apiKey: key) : nil
+            let (account, quotaSnapshot) = try await (accountTask, quotaTask)
+
             self.account = account
-            self.snapshot = metrics
             self.quota = quotaSnapshot
+            self.snapshot = metrics
+            self.availableModels = (try? await client.availableModels(apiKey: key)) ?? []
+            self.models = Self.buildModels(snapshot: metrics, quota: quotaSnapshot, available: availableModels)
             self.lastUpdated = Date()
             self.errorMessage = nil
-
-            if let ids = try? await client.availableModels(apiKey: apiKey) {
-                self.availableModels = ids
-            }
-            self.models = Self.buildModels(snapshot: metrics, quota: quotaSnapshot, available: self.availableModels)
         } catch NanError.unauthorized {
-            self.isAuthorized = false
-            self.errorMessage = "API key inválida o caducada."
+            isAuthorized = false
+            errorMessage = NanError.unauthorized.errorDescription
         } catch {
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not reach NaN."
         }
     }
 
-    static func buildModels(snapshot: UsageSnapshot, quota: QuotaSnapshot, available: [String]) -> [DashboardModel] {
-        var ids = Set<String>()
-        ids.formUnion(snapshot.allTime.byModel.map(\.model))
-        ids.formUnion(snapshot.monthToDate.byModel.map(\.model))
-        ids.formUnion(snapshot.last24h.byModel.map(\.model))
-        ids.formUnion(quota.models.map(\.model))
-        ids.formUnion(available)
-
-        let month = Dictionary(uniqueKeysWithValues: snapshot.monthToDate.byModel.map { ($0.model, $0) })
-        let all = Dictionary(uniqueKeysWithValues: snapshot.allTime.byModel.map { ($0.model, $0) })
-        let day = Dictionary(uniqueKeysWithValues: snapshot.last24h.byModel.map { ($0.model, $0) })
+    static func buildModels(snapshot: UsageSnapshot?, quota: QuotaSnapshot, available: [String]) -> [DashboardModel] {
+        let all = Dictionary(uniqueKeysWithValues: (snapshot?.allTime.byModel ?? []).map { ($0.model, $0) })
+        let month = Dictionary(uniqueKeysWithValues: (snapshot?.monthToDate.byModel ?? []).map { ($0.model, $0) })
+        let day = Dictionary(uniqueKeysWithValues: (snapshot?.last24h.byModel ?? []).map { ($0.model, $0) })
         let quotas = Dictionary(uniqueKeysWithValues: quota.models.map { ($0.model, $0) })
         let availableSet = Set(available)
 
+        let ids = Set(all.keys).union(month.keys).union(day.keys).union(quotas.keys).union(availableSet)
+
         let rows = ids.map { id -> DashboardModel in
             let meta = ModelMetadata.forModel(id)
-            let q = quotas[id]
+            let quotaModel = quotas[id]
             return DashboardModel(
                 id: id,
                 name: meta.name,
                 spec: meta.spec,
                 available: availableSet.isEmpty || availableSet.contains(id),
-                cap: (q?.cap).flatMap { $0 > 0 ? $0 : nil },
-                monthUsed: q?.tokensUsed ?? month[id]?.totalTokens ?? 0,
+                cap: (quotaModel?.cap).flatMap { $0 > 0 ? $0 : nil },
+                monthUsed: quotaModel?.tokensUsed ?? month[id]?.totalTokens ?? 0,
                 allTime: all[id]?.totalTokens ?? 0,
                 last24h: day[id]?.totalTokens ?? 0,
                 input: all[id]?.inputTokens ?? 0,
                 output: all[id]?.outputTokens ?? 0,
-                resets: q?.periodEnd.flatMap(Format.parseDate)
+                resets: quotaModel?.periodEnd.flatMap(Format.parseDate)
             )
         }
 
@@ -196,38 +251,31 @@ enum Format {
         return "\(value)"
     }
 
-    static func grouped(_ value: Int) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.groupingSeparator = "."
-        return f.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
     static func resetLabel(_ date: Date?) -> String? {
         guard let date else { return nil }
-        let f = DateFormatter()
-        f.dateFormat = "d MMM"
-        f.locale = Locale(identifier: "es_ES")
-        return "Resets on \(f.string(from: date))"
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        formatter.locale = Locale(identifier: "en_US")
+        return "Resets \(formatter.string(from: date))"
     }
 
     static func relative(_ date: Date?) -> String {
         guard let date else { return "—" }
         let seconds = Int(Date().timeIntervalSince(date))
-        if seconds < 60 { return "hace \(seconds)s" }
-        if seconds < 3600 { return "hace \(seconds / 60)m" }
-        return "hace \(seconds / 3600)h"
+        if seconds < 60 { return "\(seconds)s ago" }
+        if seconds < 3600 { return "\(seconds / 60)m ago" }
+        return "\(seconds / 3600)h ago"
     }
 
     static func parseDate(_ value: String) -> Date? {
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = iso.date(from: value) { return d }
+        if let date = iso.date(from: value) { return date }
         iso.formatOptions = [.withInternetDateTime]
-        if let d = iso.date(from: value) { return d }
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.date(from: value)
+        if let date = iso.date(from: value) { return date }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: value)
     }
 }
 
@@ -236,8 +284,7 @@ struct ModelMetadata {
     let spec: String
 
     static func forModel(_ id: String) -> ModelMetadata {
-        if let known = table[id] { return known }
-        return ModelMetadata(name: id, spec: "")
+        table[id] ?? ModelMetadata(name: id, spec: "")
     }
 
     private static let table: [String: ModelMetadata] = [

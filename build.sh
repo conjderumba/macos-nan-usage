@@ -20,7 +20,11 @@ cp Resources/menubar-icon.png "$BUNDLE/Contents/Resources/menubar-icon.png"
 cp Resources/NaN.icns "$BUNDLE/Contents/Resources/NaN.icns" 2>/dev/null || true
 
 echo "==> Ad-hoc signing"
-codesign --force --sign - --timestamp=none "$BUNDLE" >/dev/null 2>&1 || true
+if codesign --force --sign - --timestamp=none "$BUNDLE" >/dev/null 2>&1; then
+	echo "==> Ad-hoc signed"
+else
+	echo "==> Warning: ad-hoc signing failed; the app will still run" >&2
+fi
 
 echo "==> Done: $BUNDLE"
 echo "    open \"$BUNDLE\""

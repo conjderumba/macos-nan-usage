@@ -1,211 +1,227 @@
 <h1 align="center">NaN Usage</h1>
 
 <p align="center">
-  <em>La cuota de tu suscripción de <a href="https://nan.builders">NaN</a> en la barra de menús de macOS, al estilo del monitor de uso de Claude.</em><br>
-  <sub>A macOS menu bar app for your nan.builders quota — usage per model across 24 h, 30 days and all time.</sub>
+  <em>Your <a href="https://nan.builders">NaN</a> subscription quota in the macOS menu bar, in the style of the Claude usage monitor.</em><br>
+  <sub>Per-model usage, time to reset and an aggregate view — native Swift, no dependencies.</sub>
 </p>
 
 <p align="center">
-  <img alt="Licencia GPL-2.0-or-later" src="https://img.shields.io/badge/licencia-GPL--2.0--or--later-blue.svg">
-  <img alt="macOS 14 o superior" src="https://img.shields.io/badge/macOS-14%2B-black.svg?logo=apple&logoColor=white">
+  <img alt="License GPL-2.0-or-later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg">
+  <img alt="macOS 14 or later" src="https://img.shields.io/badge/macOS-14%2B-black.svg?logo=apple&logoColor=white">
   <img alt="Swift 5.9" src="https://img.shields.io/badge/Swift-5.9-F05138.svg?logo=swift&logoColor=white">
-  <img alt="Estado: beta" src="https://img.shields.io/badge/estado-beta-orange.svg">
-  <img alt="No oficial" src="https://img.shields.io/badge/no%20oficial-comunidad-lightgrey.svg">
+  <img alt="Status: beta" src="https://img.shields.io/badge/status-beta-orange.svg">
+  <img alt="Unofficial" src="https://img.shields.io/badge/unofficial-community-lightgrey.svg">
 </p>
 
-Una app de barra de menús con el isotipo de NaN y, si quieres, el consumo
-acumulado al lado. Al hacer clic, un panel con el total de tokens, el consumo de
-24 h / 30 días y una tarjeta por modelo con los tokens usados frente a su cap, el
-desglose de entrada/salida y los días que quedan para el reset.
+A menu bar app with the NaN mark and, optionally, a gauge with the level of the
+model closest to its cap plus the days until it resets. Click it for a panel with
+the total tokens, the last 24 h / 30 days and a card per model with tokens used
+against its cap, the input/output split and the reset date.
 
-Está inspirada en las versiones para Linux de la comunidad:
-[gnome-nan-usage](https://github.com/prgr1no/gnome-nan-usage) de prgr1no y
-[kde-nan-usage](https://github.com/luciferfran/kde-nan-usage) de luciferfran. Esta
-es una implementación nativa para macOS en Swift.
+Inspired by the community Linux versions:
+[gnome-nan-usage](https://github.com/prgr1no/gnome-nan-usage) by prgr1no and
+[kde-nan-usage](https://github.com/luciferfran/kde-nan-usage) by luciferfran. This
+is a native macOS implementation in Swift.
 
-## Capturas
+## Screenshots
 
-### Aspecto nativo de macOS
+### Menu bar indicator
 
 <p align="center">
-  <img src="screenshots/menu-native.png" alt="Panel de NaN Usage con el aspecto nativo de macOS" width="300">
+  <img src="screenshots/panel-indicator.png" alt="Menu bar indicator: NaN mark, gauge, percentage and days to reset" width="260">
 </p>
-<p align="center"><sub>El panel con el aspecto nativo: materiales del sistema, tipografía SF y el color de acento de tu Mac.</sub></p>
-
-### Aspecto estilo web de NaN
+<p align="center"><sub>Mark, gauge, used percentage and days to reset. Every piece is optional.</sub></p>
 
 <p align="center">
-  <img src="screenshots/menu-web.png" alt="Panel de NaN Usage con el aspecto del dashboard web de NaN" width="320">
+  <img src="screenshots/panel-icon-only.png" alt="Menu bar indicator with only the NaN mark" width="260">
 </p>
-<p align="center"><sub>El mismo panel con el aspecto del dashboard de NaN: fondo oscuro, tipografía monoespaciada y acento violeta.</sub></p>
+<p align="center"><sub>The same indicator reduced to just the mark.</sub></p>
 
-### Barra de menús
+### Panel
 
 <p align="center">
-  <img src="screenshots/panel-icon-total.png" alt="El indicador en la barra de menús con el isotipo y el total de tokens" width="200">
-  &nbsp;&nbsp;
-  <img src="screenshots/panel-icon-only.png" alt="El indicador en la barra de menús mostrando solo el isotipo" width="200">
+  <img src="screenshots/panel-native.png" alt="Panel with the native macOS look" width="300">
 </p>
-<p align="center"><sub>A la izquierda, «Icono + total». A la derecha, «Solo icono».</sub></p>
-
-### Ajustes
+<p align="center"><sub>Native look: system materials, SF typography and your Mac accent color.</sub></p>
 
 <p align="center">
-  <img src="screenshots/settings.png" alt="Ajustes de NaN Usage" width="300">
+  <img src="screenshots/panel-web.png" alt="Panel with the NaN web dashboard look" width="320">
+</p>
+<p align="center"><sub>NaN web look: dark background, monospaced type and violet accent.</sub></p>
+
+### Settings
+
+<p align="center">
+  <img src="screenshots/settings.png" alt="NaN Usage settings" width="300">
 </p>
 
-## Características
+## Features
 
-- **Un vistazo desde la barra.** El isotipo de NaN y, opcionalmente, el consumo
-  acumulado.
-- **Dos aspectos.** Nativo de macOS (materiales, tipografía SF, color de acento
-  del sistema y modo claro/oscuro automático) o el estilo del dashboard web de
-  NaN, conmutable desde Ajustes.
-- **Una tarjeta por modelo** con tokens usados, cap, barra de progreso, desglose
-  de entrada/salida y la fecha de reset.
-- **Consumo agregado** de 24 h, 30 días y total (all-time).
-- **Modelos disponibles** desde `api.nan.builders/v1/models`; los que no están en
-  tu plan se marcan como `n/d`.
-- **Sin OAuth.** Lee la API key del mismo fichero que el resto de herramientas de
-  la comunidad, o de la configuración de NaN en opencode.
-- **Se porta bien con la API.** Si NaN falla y ya había datos, los conserva y lo
-  dice.
+- **Glance from the menu bar.** The NaN mark plus an optional gauge with the
+  level of the chosen model, its used percentage and the days to reset.
+- **Two looks.** macOS native (materials, SF typography, system accent color and
+  automatic light/dark) or the NaN web dashboard style, switchable in Settings.
+- **One card per model** with tokens used, cap, a progress bar, the input/output
+  split and the reset date.
+- **Aggregate usage** for 24 h, 30 days and all time.
+- **Available models** from `api.nan.builders/v1/models`; the ones outside your
+  plan are flagged `n/a`.
+- **No OAuth.** Reads the API key from the same file as the rest of the community
+  tools, or from your NaN config in opencode.
+- **Respects the API.** If NaN fails and data was already loaded, it keeps it and
+  says so.
 
-## Requisitos
+## Requirements
 
-- **macOS 14 (Sonoma) o superior.** Probada en macOS 26 (Tahoe).
-- **Xcode Command Line Tools** para compilar (`xcode-select --install`).
-- **Una suscripción de NaN** con API key.
+- **macOS 14 (Sonoma) or later.** Tested on macOS 26 (Tahoe).
+- **Xcode Command Line Tools** to build (`xcode-select --install`).
+- **A NaN subscription** with an API key.
 
-## Instalación
+## Install
 
-### En un comando
+### One command
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ConJdeRumba/macos-nan-usage/main/scripts/install-online.sh | bash
+curl -fsSL https://raw.githubusercontent.com/conjderumba/macos-nan-usage/main/scripts/install-online.sh | bash
 ```
 
-Clona el repo, lo compila y deja `NaN Usage.app` en `/Applications`. ¿Prefieres
-leerlo antes de ejecutarlo? Está en
+It clones the repo, builds it and drops `NaN Usage.app` in `/Applications`. Prefer
+to read it before running? It is at
 [`scripts/install-online.sh`](scripts/install-online.sh).
 
-### Manual (desarrollo)
+### Manual (development)
 
 ```sh
-git clone https://github.com/ConJdeRumba/macos-nan-usage.git
+git clone https://github.com/conjderumba/macos-nan-usage.git
 cd macos-nan-usage
 ./build.sh
 open "build/NaN Usage.app"
 ```
 
-`build.sh` compila con `swift build`, empaqueta el bundle `.app`, copia el icono
-y firma en modo ad-hoc (necesario para que la app se sienta como una app normal
-de macOS).
+`build.sh` compiles with `swift build`, packages the `.app` bundle, copies the
+icon and ad-hoc signs it.
 
-### Sin git
+### Without git
 
-Descarga el código de la
-[última release](https://github.com/ConJdeRumba/macos-nan-usage/releases/latest)
-(botón «Source code»), descomprímelo y dentro de la carpeta ejecuta `./build.sh`.
+Download the source from the
+[latest release](https://github.com/conjderumba/macos-nan-usage/releases/latest)
+(the "Source code" button), unpack it and run `./build.sh` inside the folder.
 
-## La API key
+## The API key
 
-La app busca la API key en este orden:
+The app resolves the key in this order:
 
-1. La key guardada desde **Ajustes** (tiene prioridad y persiste).
-2. La variable de entorno `NAN_API_KEY`.
-3. `~/.config/nan/api-key` — el fichero estándar de la comunidad, el mismo que
-   usan el CLI `nan`, gnome-nan-usage y kde-nan-usage.
-4. La configuración de NaN en opencode
-   (`~/.config/opencode/opencode.jsonc`) o su `auth.json`.
+1. The key saved from **Settings** (stored in the login keychain).
+2. The `NAN_API_KEY` environment variable.
+3. `~/.config/nan/api-key` — the community standard file, the same one used by the
+   `nan` CLI, gnome-nan-usage and kde-nan-usage. The path is configurable.
+4. Your NaN config in opencode (`~/.config/opencode/opencode.jsonc`) or its
+   `auth.json`.
 
-Para crear el fichero estándar con permisos correctos:
+To create the standard file with the right permissions:
 
 ```sh
 mkdir -p ~/.config/nan
-(umask 177; printf %s 'TU_API_KEY' > ~/.config/nan/api-key)   # queda en modo 600
+(umask 177; printf %s 'YOUR_API_KEY' > ~/.config/nan/api-key)   # mode 600
 ```
 
-La key **nunca** sale en logs ni en mensajes de error.
+The key **never** appears in logs or error messages.
 
-## Ajustes
+## Settings
 
-Desde **Ajustes** (el engranaje, abajo a la izquierda del panel):
+From **Settings** (the gear at the bottom-left of the panel):
 
-| ajuste | qué hace | por defecto |
+| key | what it does | default |
 |---|---|---|
-| `API key de NaN` | sobrescribe la key autodetectada y la guarda | vacío (autodetectada) |
-| `Aspecto` (`nan.theme`) | `native` (macOS) o `web` (estilo dashboard de NaN) | `native` |
-| `Barra de menús` (`nan.menuBarStyle`) | `iconAndTotal` (isotipo + total) o `iconOnly` (solo isotipo) | `iconAndTotal` |
+| `keyPath` | file with the API key (`~` works) | `~/.config/nan/api-key` |
+| `theme` | `native` (macOS) or `web` (NaN dashboard) | `native` |
+| `pollSeconds` | seconds between polls (60–1800) | `300` |
+| `panelModel` | which model the indicator follows: `worst` (near cap), `max` (highest usage), `fixed` | `worst` |
+| `panelModelId` | model used by `fixed` | `deepseek-v4-flash` |
+| `panelGauge` | `ring`, `bar` or `none` | `ring` |
+| `showIcon` | show the NaN mark | `true` |
+| `showPercentage` | show the used percentage | `true` |
+| `showReset` | show the days to reset | `true` |
+| `showModel` | show the model name | `false` |
+| `showTotalTokens` | show the all-time total | `false` |
+| `showMetrics` | aggregate 24 h / 30 d line (one extra request) | `true` |
+| `hideUnused` | hide models with zero usage in the panel | `true` |
 
-Se guardan en los `defaults` de la app (`com.nan.menubar`). Para volver a los
-valores por defecto:
+About `panelModel`: **Near cap** follows whichever model is closest to its cap
+(highest used/cap ratio), **Highest** follows the one with the most tokens used
+this period, and **Fixed** always follows the model id you type.
+
+The GNOME/KDE options `panelPosition`, `panelIndex` and `toggleMenu` do not apply
+on macOS (the menu bar order is up to the user, and a global shortcut would need
+extra permissions).
+
+Settings live in the app's `defaults` (`com.nan.menubar`). To reset:
 
 ```sh
 defaults delete com.nan.menubar
 ```
 
-## Cómo funciona
+## How it works
 
-La API de inferencia de NaN (`api.nan.builders/v1`, LiteLLM) no expone uso. El
-backend del panel web, `cloud-api.nan.builders`, sí, con **la misma API key**
-como `Bearer`. Sus rutas salen del bundle JS del panel y **no tienen contrato
-público**: pueden cambiar sin aviso.
+NaN's inference API (`api.nan.builders/v1`, LiteLLM) does not expose usage. The
+web dashboard backend, `cloud-api.nan.builders`, does, with **the same API key**
+as a `Bearer` token. Its routes come from the dashboard's JS bundle and **have no
+public contract**: they can change without notice.
 
-| ruta | uso aquí |
+| route | used for |
 |---|---|
-| `GET /api/usage/quota` | `periodStart` y `models[]` con `tokensUsed`, `cap`, `remaining`, `periodEnd`; alimenta las barras |
-| `GET /api/auth/me` | email, región y tier de la cabecera |
-| `GET /api/metrics/usage` | consumo agregado 24 h / mes / 30 d / all-time por modelo |
-| `GET /v1/models` | lista de modelos disponibles (en `api.nan.builders`) |
+| `GET /api/usage/quota` | `periodStart` and `models[]` with `tokensUsed`, `cap`, `remaining`, `periodEnd`; feeds the gauges and bars |
+| `GET /api/auth/me` | email, region and tier for the header |
+| `GET /api/metrics/usage` | aggregate 24 h / month / 30 d / all-time per model |
+| `GET /v1/models` | available models (on `api.nan.builders`) |
 
-- **Sondeo cada 30 segundos** por defecto, más uno al abrir el panel y con «↻
-  Actualizar».
-- **La key se resuelve al arrancar** y cada vez que la cambias en Ajustes.
-- **Todo el estado es local.** No hay servidor intermedio ni cuentas.
+- **Level by threshold.** The gauge is drawn in your accent color, turns amber from
+  75 % and red from 90 % of the cap.
+- **Polling** every 5 minutes by default, plus one when you open the panel and on
+  “↻ Refresh”.
+- **Everything is local.** No middleman server, no accounts.
 
-## Desarrollo y pruebas
+## Development
 
 ```sh
-swift build -c release       # compila
-./build.sh                   # compila + empaqueta el .app
-open "build/NaN Usage.app"   # ejecuta
+swift build -c release       # compile
+./build.sh                   # compile + package the .app
+open "build/NaN Usage.app"   # run
 ```
 
-El indicador, el panel y los ajustes solo se ven con la app en marcha. Para
-iterar, cierra la app (`Salir`) y vuelve a abrir el `.app`.
+The indicator, the panel and the settings are only visible while the app is
+running. To iterate, quit the app (`Quit`) and open the `.app` again.
 
-## Desinstalar
+## Uninstall
 
 ```sh
 rm -rf "/Applications/NaN Usage.app"
-defaults delete com.nan.menubar   # borra ajustes y key guardada (opcional)
+defaults delete com.nan.menubar   # clear settings and the stored key (optional)
 ```
 
-## Créditos
+## Credits
 
-Esta app toma la idea y la estructura de datos de dos proyectos de la comunidad
-para Linux:
+This app takes the idea and the data shape from two community projects for Linux:
 
 - [**gnome-nan-usage**](https://github.com/prgr1no/gnome-nan-usage) (prgr1no) —
-  la extensión original de GNOME Shell.
+  the original GNOME Shell extension.
 - [**kde-nan-usage**](https://github.com/luciferfran/kde-nan-usage) (luciferfran)
-  — el widget de KDE Plasma 6.
+  — the KDE Plasma 6 widget.
 
-Ambos descubrieron y documentaron las rutas de `cloud-api.nan.builders` que aquí
-se reutilizan. La implementación de esta versión es nativa para macOS en Swift.
+Both of them discovered and documented the `cloud-api.nan.builders` routes reused
+here. This macOS version is a native Swift implementation.
 
-## Privacidad
+## Privacy
 
-Todo el tráfico va de tu equipo a NaN, con tu key. La app no manda datos a ningún
-otro sitio, no guarda histórico y no escribe la key en ningún log.
+All traffic goes from your machine to NaN, with your key. The app sends data
+nowhere else, keeps no history and never writes the key to a log.
 
-## Licencia
+## License
 
-**GPL-2.0-or-later.** Ver [LICENSE](LICENSE).
+**GPL-2.0-or-later.** See [LICENSE](LICENSE).
 
 ---
 
-<sub>Proyecto de la comunidad, <strong>no oficial</strong>: no está afiliado ni
-respaldado por nan.builders. «NaN» y su logotipo pertenecen a sus dueños; el icono
-deriva de su favicon público.</sub>
+<sub>Community project, <strong>unofficial</strong>: not affiliated with or
+endorsed by nan.builders. “NaN” and its logo belong to their owners; the icon is
+derived from their public favicon.</sub>

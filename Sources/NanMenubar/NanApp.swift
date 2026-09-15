@@ -15,16 +15,11 @@ struct NanApp: App {
             DashboardView()
                 .environmentObject(model)
         } label: {
-            HStack(spacing: 4) {
-                if let icon = NanIcon.menuBar {
-                    Image(nsImage: icon)
-                        .renderingMode(.original)
-                }
-                if model.menuBarStyle == .iconAndTotal {
-                    Text(model.menuTitle)
-                        .font(.system(size: 12, weight: .medium))
-                        .monospacedDigit()
-                }
+            if let image = MenuBarLabel.image(for: model) {
+                Image(nsImage: image)
+                    .renderingMode(.original)
+            } else {
+                Text("NaN")
             }
         }
         .menuBarExtraStyle(.window)
