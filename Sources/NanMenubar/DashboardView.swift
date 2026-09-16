@@ -84,7 +84,7 @@ struct DashboardView: View {
                 dashboard.padding(14)
             }
         }
-        .frame(width: theme.width, height: showSettings || model.isAuthorized ? 620 : 320)
+        .frame(width: 392, height: 620)
         .background {
             if !showSettings, let background = theme.background {
                 Rectangle().fill(background)
