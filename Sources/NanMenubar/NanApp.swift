@@ -2,26 +2,22 @@ import SwiftUI
 
 @main
 struct NanApp: App {
-    @StateObject private var model: AppModel
-
-    init() {
-        let model = AppModel()
-        _model = StateObject(wrappedValue: model)
-        model.start()
-    }
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        MenuBarExtra {
-            DashboardView()
-                .environmentObject(model)
-        } label: {
-            if let image = MenuBarLabel.image(for: model) {
-                Image(nsImage: image)
-                    .renderingMode(.original)
-            } else {
-                Text("NaN")
-            }
-        }
-        .menuBarExtraStyle(.window)
+        // The menu bar item is managed by AppKit (StatusItemController); no visible scene is needed.
+        Settings { EmptyView() }
+    }
+}
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var controller: StatusItemController?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        let model = AppModel()
+        controller = StatusItemController(model: model)
+        model.start()
     }
 }
