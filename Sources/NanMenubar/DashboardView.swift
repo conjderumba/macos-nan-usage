@@ -350,9 +350,11 @@ private struct SettingsPane: View {
                     Label("Back", systemImage: "chevron.left")
                 }
                 .buttonStyle(.borderless)
+                .foregroundStyle(theme.secondary)
                 Spacer()
                 Text("Settings")
-                    .font(.headline)
+                    .font(theme.titleFont)
+                    .foregroundStyle(theme.primary)
                 Spacer()
                 Label("Back", systemImage: "chevron.left").hidden()
             }
@@ -455,7 +457,21 @@ private struct SettingsPane: View {
                 }
             }
             .formStyle(.grouped)
+            .font(theme.isWeb ? .system(size: 11, design: .monospaced) : .body)
+            .tint(theme.accent)
+            .scrollContentBackground(theme.isWeb ? .hidden : .automatic)
+            .background {
+                if let background = theme.background {
+                    Rectangle().fill(background)
+                }
+            }
         }
-        .onAppear { hasStoredKey = SecretStore.loadAPIKey() != nil }
+        .onAppear {
+            hasStoredKey = SecretStore.loadAPIKey() != nil
+            pollText = String(model.pollSeconds)
+        }
+        .onChange(of: pollFocused) { _, focused in
+            if !focused { commitPoll() }
+        }
     }
 }
