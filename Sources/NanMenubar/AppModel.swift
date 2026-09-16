@@ -85,6 +85,12 @@ final class AppModel: ObservableObject {
         didSet { Prefs.set("hideUnused", hideUnused) }
     }
 
+    /// Model ids in the order the user dragged them into. Empty means "never
+    /// reordered", so the list keeps the usage based order from `buildModels`.
+    @Published private(set) var modelOrder: [String] = Prefs.stringArray("modelOrder", []) {
+        didSet { Prefs.set("modelOrder", modelOrder) }
+    }
+
     private let client = NanClient()
     private var apiKey = ""
     private var timer: Timer?
@@ -102,7 +108,8 @@ final class AppModel: ObservableObject {
     var accountLabel: String { account?.email ?? account?.handle ?? "" }
 
     var visibleModels: [DashboardModel] {
-        hideUnused ? models.filter { $0.monthUsed > 0 || $0.allTime > 0 } : models
+        let shown = hideUnused ? models.filter { $0.monthUsed > 0 || $0.allTime > 0 } : models
+        return Self.ordered(shown, by: modelOrder)
     }
 
     /// Model reflected by the menu bar indicator.
@@ -175,7 +182,52 @@ final class AppModel: ObservableObject {
         isAuthorized = key != nil
     }
 
+    /// Reorders `models` so the ones the user placed come first, in their order.
+    /// Models missing from `order` (added by NaN later) are not in the user's order yet,
+    /// so they go to the end, keeping the usage based order among themselves.
+    static func ordered(_ models: [DashboardModel], by order: [String]) -> [DashboardModel] {
+        guard !order.isEmpty else { return models }
+        let rank = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+        let natural = Dictionary(models.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
+        // `sorted` is not stable, so ties fall back to the position in `models`.
+        return models.sorted { lhs, rhs in
+            let left = rank[lhs.id] ?? Int.max
+            let right = rank[rhs.id] ?? Int.max
+            if left != right { return left < right }
+            return natural[lhs.id, default: 0] < natural[rhs.id, default: 0]
+        }
+    }
+
     // MARK: Actions
+
+    /// Puts `source` where `target` sits, as if it had been dragged onto it, and
+    /// remembers the result.
+    func moveModel(_ source: DashboardModel, onto target: DashboardModel) {
+        let current = Self.ordered(models, by: modelOrder).map(\.id)
+        guard let reordered = Self.moved(current, source: source.id, onto: target.id) else { return }
+        modelOrder = reordered
+    }
+
+    /// Moves `source` onto `target`'s position, keeping every other id in place.
+    /// Returns nil when either id is missing or they are already the same.
+    static func moved(_ ids: [String], source: String, onto target: String) -> [String]? {
+        guard let from = ids.firstIndex(of: source),
+              let to = ids.firstIndex(of: target),
+              from != to
+        else { return nil }
+
+        // Removing `source` first shifts everything after it left, which makes `to`
+        // the right insertion point in both directions.
+        var result = ids
+        let moved = result.remove(at: from)
+        result.insert(moved, at: to)
+        return result
+    }
+
+    /// Goes back to the usage based order.
+    func resetModelOrder() {
+        modelOrder = []
+    }
 
     func setAPIKey(_ value: String) {
         guard let key = NanAPIKey.normalized(value) else {

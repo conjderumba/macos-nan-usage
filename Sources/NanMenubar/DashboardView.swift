@@ -73,8 +73,46 @@ struct DashboardView: View {
     @State private var keyInput = ""
     @State private var hasStoredKey = false
     @State private var showSettings = false
+    @State private var draggedModel: DashboardModel?
+    @State private var dragWatchdog: Timer?
 
     private var theme: DashboardTheme { DashboardTheme.make(model.theme) }
+
+    /// Reads the dragging pasteboard, which carries the payload of the drag in flight.
+    /// A payload that is not one of our cards is ignored, which is what stops text
+    /// dragged in from another app from reordering the list.
+    private var draggedCardId: String? {
+        NSPasteboard(name: .drag).string(forType: .string)
+    }
+
+    /// The card being dragged, for the reorder. Falls back to the state set by `onDrag`
+    /// only when the pasteboard cannot be read at all.
+    private func draggedCard() -> DashboardModel? {
+        guard let id = draggedCardId else { return draggedModel }
+        return model.models.first { $0.id == id }
+    }
+
+    /// Starts tracking a card drag. The drag preview follows the cursor on its own, so
+    /// the card has to be faded out of the list or it ends up drawn twice.
+    private func beginDrag(_ card: DashboardModel) {
+        draggedModel = card
+        dragWatchdog?.invalidate()
+        // `.onDrag` has no "drag ended" callback, and a card released outside the list
+        // never reaches `performDrop`, so watch the mouse button instead: once it is up
+        // the drag is over, whatever ended it, and the card comes back.
+            let timer = Timer(timeInterval: 0.15, repeats: true) { timer in
+                guard NSEvent.pressedMouseButtons & 1 == 0 else { return }
+                timer.invalidate()
+                draggedModel = nil
+            }
+        RunLoop.main.add(timer, forMode: .common)
+        dragWatchdog = timer
+    }
+
+    /// Whether `card` is the one under the pointer.
+    private func isBeingDragged(_ card: DashboardModel) -> Bool {
+        draggedModel?.id == card.id
+    }
 
     var body: some View {
         Group {
@@ -179,6 +217,20 @@ struct DashboardView: View {
                     VStack(spacing: 8) {
                         ForEach(model.visibleModels) { item in
                             ModelRowView(theme: theme, model: item, showBreakdown: model.showMetrics)
+                                .opacity(isBeingDragged(item) ? 0.2 : 1)
+                                .onDrag {
+                                    beginDrag(item)
+                                    return NSItemProvider(object: item.id as NSString)
+                                }
+                                .onDrop(
+                                    of: [.text],
+                                    delegate: ModelReorderDelegate(
+                                        target: item,
+                                        source: { draggedCard() },
+                                        onEnter: { source, target in model.moveModel(source, onto: target) },
+                                        onDrop: { draggedModel = nil }
+                                    )
+                                )
                         }
                     }
                     .padding(.vertical, 1)
@@ -271,6 +323,10 @@ private struct ModelRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(theme.tertiary)
+                    .help("Drag to reorder")
                 Text(model.name)
                     .font(theme.isWeb ? .system(size: 12, weight: .semibold, design: .monospaced) : .subheadline.weight(.semibold))
                     .foregroundStyle(theme.primary)
@@ -321,6 +377,32 @@ private struct ModelRowView: View {
         }
         .padding(10)
         .card(theme)
+    }
+}
+
+// MARK: - Reordering
+
+/// Live reordering while a card is being dragged: hovering another card drops the
+/// dragged one into its place, so the list follows the pointer instead of waiting for
+/// the mouse to be released.
+private struct ModelReorderDelegate: DropDelegate {
+    let target: DashboardModel
+    let source: () -> DashboardModel?
+    let onEnter: (DashboardModel, DashboardModel) -> Void
+    let onDrop: () -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard let source = source(), source.id != target.id else { return }
+        withAnimation(.easeInOut(duration: 0.15)) { onEnter(source, target) }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        onDrop()
+        return true
     }
 }
 
@@ -443,6 +525,9 @@ private struct SettingsPane: View {
                     }
                     Toggle("Aggregate usage (24h / 30d)", isOn: $model.showMetrics)
                     Toggle("Hide unused models", isOn: $model.hideUnused)
+                    if !model.modelOrder.isEmpty {
+                        Button("Reset model order") { model.resetModelOrder() }
+                    }
                 }
 
                 Section {

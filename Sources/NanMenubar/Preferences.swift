@@ -14,6 +14,10 @@ enum Prefs {
         UserDefaults.standard.string(forKey: key) ?? fallback
     }
 
+    static func stringArray(_ key: String, _ fallback: [String]) -> [String] {
+        UserDefaults.standard.stringArray(forKey: key) ?? fallback
+    }
+
     static func raw<T: RawRepresentable>(_ key: String, _ fallback: T) -> T where T.RawValue == String {
         T(rawValue: string(key, fallback.rawValue)) ?? fallback
     }

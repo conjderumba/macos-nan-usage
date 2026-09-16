@@ -87,6 +87,8 @@ The app ships with two looks, switchable in **Settings → Appearance**:
   The panel and the settings both follow it.
 - **One card per model** with tokens used, cap, a progress bar, the input/output
   split and the reset date.
+- **Reorder the cards.** Drag one onto another and the list keeps your order; by
+  default it sorts by cap first, then by tokens used.
 - **Aggregate usage** for 24 h, 30 days and all time.
 - **Available models** from `api.nan.builders/v1/models`; the ones outside your
   plan are flagged `n/a`.
@@ -170,10 +172,20 @@ From **Settings** (the gear at the bottom-left of the panel):
 | `showTotalTokens` | show the all-time total | `false` |
 | `showMetrics` | aggregate 24 h / 30 d line (one extra request) | `true` |
 | `hideUnused` | hide models with zero usage in the panel | `true` |
+| `modelOrder` | every model id, in the order you dragged the cards (empty = sorted by usage) | `[]` |
 
 About `panelModel`: **Near cap** follows whichever model is closest to its cap
 (highest used/cap ratio), **Highest** follows the one with the most tokens used
 this period, and **Fixed** always follows the model id you type.
+
+About `modelOrder`: drag any card in the panel onto another one to move it, and the
+order is remembered. It is written as soon as you move a card, and until you do,
+the empty value keeps the list sorted by cap and then by usage. The value holds
+every model id, including the ones hidden by `hideUnused`, so each card keeps its
+position whenever you unhide it. A model that NaN adds later is not in the stored
+order yet, so it goes to the end until you drag it too. Once you have moved
+something, Settings → Data shows a **Reset model order** button that goes back to
+the sorted list.
 
 The GNOME/KDE options `panelPosition`, `panelIndex` and `toggleMenu` do not apply
 on macOS (the menu bar order is up to the user, and a global shortcut would need
