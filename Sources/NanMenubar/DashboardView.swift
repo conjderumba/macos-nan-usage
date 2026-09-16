@@ -219,11 +219,11 @@ struct DashboardView: View {
             Button {
                 showSettings = true
             } label: {
-                if theme.isWeb { Text("Settings") } else { Label("Settings", systemImage: "gearshape") }
+                Label("Settings", systemImage: "gearshape")
             }
             .buttonStyle(.borderless)
             .font(theme.tinyFont)
-            .foregroundStyle(theme.secondary)
+            .foregroundStyle(theme.isWeb ? theme.accent : theme.secondary)
 
             Spacer()
 
