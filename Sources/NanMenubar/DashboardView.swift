@@ -333,6 +333,16 @@ private struct SettingsPane: View {
     @Binding var hasStoredKey: Bool
     let onBack: () -> Void
 
+    @State private var pollText = ""
+    @FocusState private var pollFocused: Bool
+
+    private func commitPoll() {
+        let value = Int(pollText.trimmingCharacters(in: .whitespaces)) ?? model.pollSeconds
+        let clamped = min(1800, max(60, value))
+        model.pollSeconds = clamped
+        pollText = String(clamped)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -417,8 +427,17 @@ private struct SettingsPane: View {
                 }
 
                 Section("Data") {
-                    Stepper(value: $model.pollSeconds, in: 60...1800, step: 60) {
-                        Text("Poll every \(model.pollSeconds) seconds")
+                    LabeledContent("Poll every") {
+                        HStack(spacing: 6) {
+                            TextField(text: $pollText, prompt: Text("300")) { EmptyView() }
+                                .textFieldStyle(.roundedBorder)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 64)
+                                .focused($pollFocused)
+                                .onSubmit(commitPoll)
+                            Text("seconds")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Toggle("Aggregate usage (24h / 30d)", isOn: $model.showMetrics)
                     Toggle("Hide unused models", isOn: $model.hideUnused)
