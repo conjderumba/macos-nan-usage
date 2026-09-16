@@ -28,39 +28,63 @@ is a native macOS implementation in Swift.
 ### Menu bar indicator
 
 <p align="center">
-  <img src="screenshots/panel-indicator.png" alt="Menu bar indicator: NaN mark, gauge, percentage and days to reset" width="260">
+  <img src="screenshots/panel-indicator.png" alt="Default menu bar indicator: NaN mark and gauge" width="200">
 </p>
-<p align="center"><sub>Mark, gauge, used percentage and days to reset. Every piece is optional.</sub></p>
+<p align="center"><sub>Default: just the NaN mark and the gauge with the level of the model closest to its cap.</sub></p>
 
 <p align="center">
-  <img src="screenshots/panel-icon-only.png" alt="Menu bar indicator with only the NaN mark" width="260">
+  <img src="screenshots/panel-indicator-details.png" alt="Indicator with percentage and days to reset" width="260">
 </p>
-<p align="center"><sub>The same indicator reduced to just the mark.</sub></p>
+<p align="center"><sub>With the percentage and the days to reset enabled.</sub></p>
+
+<p align="center">
+  <img src="screenshots/panel-icon-only.png" alt="Menu bar indicator with only the NaN mark" width="200">
+</p>
+<p align="center"><sub>Or reduced to just the mark.</sub></p>
+
+<p align="center">
+  <img src="screenshots/panel-tooltip.png" alt="Hovering a piece of the indicator shows a detail tooltip" width="380">
+</p>
+<p align="center"><sub>Each piece has its own tooltip on hover: which model the percentage refers to, when it resets, and so on.</sub></p>
 
 ### Panel
 
-<p align="center">
-  <img src="screenshots/panel-native.png" alt="Panel with the native macOS look" width="300">
-</p>
-<p align="center"><sub>Native look: system materials, SF typography and your Mac accent color.</sub></p>
+## Themes
+
+The app ships with two looks, switchable in **Settings → Appearance**:
+
+| theme | looks like | follows |
+|---|---|---|
+| **macOS native** | system materials (vibrancy), SF typography and your Mac's accent color | light / dark automatically |
+| **NaN web** | the NaN dashboard: dark background, monospaced type and violet accent | dark |
 
 <p align="center">
-  <img src="screenshots/panel-web.png" alt="Panel with the NaN web dashboard look" width="320">
+  <img src="screenshots/panel-native.png" alt="Panel with the macOS native theme" width="300">
+  &nbsp;&nbsp;
+  <img src="screenshots/panel-web.png" alt="Panel with the NaN web theme" width="300">
 </p>
-<p align="center"><sub>NaN web look: dark background, monospaced type and violet accent.</sub></p>
+<p align="center"><sub>Left: macOS native. Right: NaN web. The panel <em>and</em> the settings follow the chosen theme.</sub></p>
 
 ### Settings
 
 <p align="center">
-  <img src="screenshots/settings.png" alt="NaN Usage settings" width="300">
+  <img src="screenshots/settings.png" alt="NaN Usage settings in the native look" width="300">
+  &nbsp;&nbsp;
+  <img src="screenshots/settings-web.png" alt="NaN Usage settings in the web look" width="300">
 </p>
+<p align="center"><sub>Settings follow the chosen look: macOS native (left) or NaN web (right).</sub></p>
 
 ## Features
 
-- **Glance from the menu bar.** The NaN mark plus an optional gauge with the
-  level of the chosen model, its used percentage and the days to reset.
+- **Glance from the menu bar.** By default, the NaN mark and a gauge with the
+  level of the chosen model. Add the used percentage, the days to reset, the
+  model name or the all-time total if you want them.
+- **Details on hover.** Each piece of the indicator has its own tooltip: the
+  percentage tells you which model it refers to and its cap, the days tell you
+  when it resets, and so on.
 - **Two looks.** macOS native (materials, SF typography, system accent color and
   automatic light/dark) or the NaN web dashboard style, switchable in Settings.
+  The panel and the settings both follow it.
 - **One card per model** with tokens used, cap, a progress bar, the input/output
   split and the reset date.
 - **Aggregate usage** for 24 h, 30 days and all time.
@@ -140,8 +164,8 @@ From **Settings** (the gear at the bottom-left of the panel):
 | `panelModelId` | model used by `fixed` | `deepseek-v4-flash` |
 | `panelGauge` | `ring`, `bar` or `none` | `ring` |
 | `showIcon` | show the NaN mark | `true` |
-| `showPercentage` | show the used percentage | `true` |
-| `showReset` | show the days to reset | `true` |
+| `showPercentage` | show the used percentage | `false` |
+| `showReset` | show the days to reset | `false` |
 | `showModel` | show the model name | `false` |
 | `showTotalTokens` | show the all-time total | `false` |
 | `showMetrics` | aggregate 24 h / 30 d line (one extra request) | `true` |
