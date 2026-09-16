@@ -63,10 +63,10 @@ final class AppModel: ObservableObject {
     @Published var showIcon: Bool = Prefs.bool("showIcon", true) {
         didSet { Prefs.set("showIcon", showIcon) }
     }
-    @Published var showPercentage: Bool = Prefs.bool("showPercentage", true) {
+    @Published var showPercentage: Bool = Prefs.bool("showPercentage", false) {
         didSet { Prefs.set("showPercentage", showPercentage) }
     }
-    @Published var showReset: Bool = Prefs.bool("showReset", true) {
+    @Published var showReset: Bool = Prefs.bool("showReset", false) {
         didSet { Prefs.set("showReset", showReset) }
     }
     @Published var showModelName: Bool = Prefs.bool("showModel", false) {
