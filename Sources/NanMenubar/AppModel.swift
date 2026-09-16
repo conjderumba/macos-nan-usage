@@ -133,6 +133,28 @@ final class AppModel: ObservableObject {
 
     var totalText: String { Format.compact(allTimeTotal) }
 
+    // MARK: Menu bar tooltips
+
+    var percentageTooltip: String? {
+        guard let model = selectedModel, let cap = model.cap else { return nil }
+        return "\(model.name): \(percentageText ?? "") of its \(Format.compact(cap)) cap (\(Format.compact(model.monthUsed)) used)"
+    }
+
+    var resetTooltip: String? {
+        guard let date = selectedModel?.resets else { return nil }
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
+        return days >= 1 ? "Reset in \(days) day\(days == 1 ? "" : "s")" : "Resets in less than a day"
+    }
+
+    var tooltip: String {
+        guard let model = selectedModel else { return "NaN Usage" }
+        var lines = ["NaN — \(model.name)"]
+        if let percentageTooltip { lines.append(percentageTooltip) }
+        if let resetTooltip { lines.append(resetTooltip) }
+        lines.append("All-time total: \(Format.compact(allTimeTotal)) tokens")
+        return lines.joined(separator: "\n")
+    }
+
     // MARK: Lifecycle
 
     func start() {
