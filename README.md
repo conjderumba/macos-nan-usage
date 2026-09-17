@@ -228,6 +228,64 @@ open "build/NaN Usage.app"   # run
 The indicator, the panel and the settings are only visible while the app is
 running. To iterate, quit the app (`Quit`) and open the `.app` again.
 
+## Contributing
+
+Contributions are welcome. The project follows a light
+[Gitflow](https://nvie.com/posts/a-successful-git-branching-model/) workflow and
+[**Conventional Commits**](https://www.conventionalcommits.org/en/v1.0.0/).
+
+`main` is always buildable and is the only long-lived branch. **Never commit or
+push directly to `main`** — every change lands through a pull request, even for a
+one-line fix or a docs tweak.
+
+### Workflow
+
+1. Start from an up-to-date `main` and create a branch:
+
+   ```sh
+   git checkout main
+   git pull
+   git checkout -b feature/reorder-model-cards
+   ```
+
+2. Name the branch `prefix/short-hyphenated-description`, with one of:
+
+   | prefix | for |
+   |---|---|
+   | `feature/` | new functionality |
+   | `fix/` | bug fixes |
+   | `docs/` | documentation only |
+   | `refactor/` | changes that neither add nor fix behavior |
+   | `perf/` | performance |
+   | `test/` | tests |
+   | `chore/` | build, tooling, dependencies |
+
+3. Commit in [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
+   form: `type(scope): summary`, imperative, lowercase, no trailing period.
+
+   ```sh
+   git commit -m "feat(panel): reorder the model cards by dragging"
+   git commit -m "fix(statusitem): keep the gauge when the cap is missing"
+   git commit -m "docs: document the modelOrder setting"
+   ```
+
+   `type` is one of `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `chore`;
+   `scope` is optional (for example `panel`, `settings`, `statusitem`).
+
+4. Rebase on `main` and make sure it builds clean before opening the PR:
+
+   ```sh
+   git fetch origin
+   git rebase origin/main
+   swift build -c release
+   ```
+
+5. Open a pull request against `main`. Describe **what** changed, **why** and
+   **how**, and say how you verified it (commands run, screenshots, manual steps).
+
+Keep the project dependency-free: prefer the standard library and the system
+frameworks over adding a package.
+
 ## Uninstall
 
 ```sh
